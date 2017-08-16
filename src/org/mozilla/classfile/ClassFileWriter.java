@@ -1337,6 +1337,10 @@ public class ClassFileWriter {
 
     public void setStackTop(short n) {
         itsStackTop = n;
+        if (DEBUGSTACK) {
+            System.out.println("After "+"setStackTop()"
+                    +" stack = "+itsStackTop);
+        }
     }
 
     public void adjustStackTop(int delta) {
