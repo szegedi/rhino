@@ -1420,6 +1420,9 @@ public class ClassFileWriter {
     }
 
     public void addLineNumberEntry(short lineNumber) {
+        if (DEBUGCODE) {
+            System.out.println("    line " + lineNumber);
+        }
         if (itsCurrentMethod == null)
             throw new IllegalArgumentException("No method to stop");
         int N = itsLineNumberTableTop;
@@ -2619,7 +2622,7 @@ public class ClassFileWriter {
 
         private boolean wide;
 
-        static final boolean DEBUGSTACKMAP = false;
+        static final boolean DEBUGSTACKMAP = true;
     }
 
     /**
@@ -4534,9 +4537,9 @@ public class ClassFileWriter {
 
     private final static int FileHeaderConstant = 0xCAFEBABE;
     // Set DEBUG flags to true to get better checking and progress info.
-    private static final boolean DEBUGSTACK = false;
+    private static final boolean DEBUGSTACK = true;
     private static final boolean DEBUGLABELS = false;
-    private static final boolean DEBUGCODE = false;
+    private static final boolean DEBUGCODE = true;
 
     private String generatedClassName;
 
