@@ -259,6 +259,10 @@ public class ScriptRuntime {
 
         if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
             NativeSymbol.init(cx, scope, sealed);
+            NativeCollectionIterator.init(scope, NativeSet.ITERATOR_TAG, sealed);
+            NativeCollectionIterator.init(scope, NativeMap.ITERATOR_TAG, sealed);
+            NativeMap.init(cx, scope, sealed);
+            NativeSet.init(cx, scope, sealed);
         }
 
         if (scope instanceof TopLevel) {
@@ -3217,7 +3221,31 @@ public class ScriptRuntime {
             if (isNaN(x) && isNaN(y)) {
                 return true;
             }
-            return x.equals(y);
+            return eqNumber(((Number) x).doubleValue(), y);
+        }
+        return eq(x, y);
+    }
+
+    /**
+     * Implement "SameValueZero" from ECMA 7.2.9
+     */
+    public static boolean sameZero(Object x, Object y) {
+        if (!typeof(x).equals(typeof(y))) {
+            return false;
+        }
+        if (x instanceof Number) {
+            if (isNaN(x) && isNaN(y)) {
+                return true;
+            }
+            final double dx = ((Number)x).doubleValue();
+            if (y instanceof Number) {
+                final double dy = ((Number)y).doubleValue();
+                if (((dx == negativeZero) && (dy == 0.0)) ||
+                    ((dx == 0.0) && dy == negativeZero)) {
+                        return true;
+                }
+            }
+            return eqNumber(dx, y);
         }
         return eq(x, y);
     }
