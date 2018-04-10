@@ -1,5 +1,7 @@
 package org.mozilla.javascript;
 
+import java.util.Iterator;
+
 public class NativeMap
     extends IdScriptableObject
 {
@@ -39,9 +41,12 @@ public class NativeMap
         int id = f.methodId();
         switch (id) {
             case Id_constructor:
-                // TODO read from iterator argument
                 if (thisObj == null) {
-                    return new NativeMap();
+                    NativeMap nm = new NativeMap();
+                    if (args.length > 0) {
+                        nm.js_load(cx, scope, args[0]);
+                    }
+                    return nm;
                 } else {
                     throw ScriptRuntime.typeError1("msg.no.new", "Map");
                 }
@@ -64,6 +69,10 @@ public class NativeMap
                 return realThis(thisObj, f).js_iterator(scope, NativeCollectionIterator.Type.VALUES);
             case Id_entries:
                 return realThis(thisObj, f).js_iterator(scope, NativeCollectionIterator.Type.BOTH);
+            case Id_forEach:
+                return realThis(thisObj, f).js_forEach(cx, scope,
+                        args.length > 0 ? args[0] : Undefined.instance,
+                        args.length > 1 ? args[1] : Undefined.instance);
             case SymbolId_getSize:
                 return realThis(thisObj, f).js_getSize();
         }
@@ -109,6 +118,66 @@ public class NativeMap
         return Undefined.instance;
     }
 
+    private Object js_forEach(Context cx, Scriptable scope, Object arg1, Object arg2)
+    {
+        if (!(arg1 instanceof Callable)) {
+            throw ScriptRuntime.typeError2("msg.isnt.function", arg1, ScriptRuntime.typeof(arg1));
+        }
+        final Callable f = (Callable)arg1;
+
+        Iterator<Hashtable.Entry> i = entries.iterator();
+        while (i.hasNext()) {
+            // Per spec must convert every time so that primitives are always regenerated...
+            Scriptable thisObj = ScriptRuntime.toObjectOrNull(cx, arg2, scope);
+            if (thisObj == null) {
+                thisObj = Undefined.SCRIPTABLE_UNDEFINED;
+            }
+            final Hashtable.Entry e = i.next();
+            f.call(cx, scope, thisObj,
+                    new Object[] { e.value, e.key, this });
+        }
+        return Undefined.instance;
+    }
+
+    /**
+     * If an "iterable" object was passed to the constructor, there are many many things
+     * to do...
+     */
+    private void js_load(Context cx, Scriptable scope, Object arg1)
+    {
+        if ((arg1 == null) || Undefined.instance.equals(arg1)) {
+            return;
+        }
+
+        // Call the "[Symbol.iterator]" property as a function.
+        Object ito = ScriptRuntime.callIterator(arg1, cx, scope);
+        if (Undefined.instance.equals(ito)) {
+            // Per spec, ignore if the iterator is undefined
+            return;
+        }
+
+        IteratorLikeIterable it = new IteratorLikeIterable(cx, scope, ito);
+
+        // Find the "add" function of our own prototype, since it might have
+        // been replaced. Since we're not fully constructed yet, create a dummy instance
+        // so that we can get our own prototype.
+        ScriptableObject dummy = ensureScriptableObject(cx.newObject(scope, getClassName()));
+        final Callable set =
+                ScriptRuntime.getPropFunctionAndThis(dummy.getPrototype(), "set", cx, scope);
+        ScriptRuntime.lastStoredScriptable(cx);
+
+        // Finally, run through all the iterated values and add them!
+        for (Object val : it) {
+            Scriptable sVal = ScriptableObject.ensureScriptable(val);
+            Object finalKey = sVal.get(0, sVal);
+            Object finalVal = sVal.get(1, sVal);
+            if ((finalKey == Scriptable.NOT_FOUND) || (finalVal == Scriptable.NOT_FOUND)) {
+                throw ScriptRuntime.typeError(ScriptRuntime.typeof(val));
+            }
+            set.call(cx, scope, this, new Object[] { finalKey, finalVal });
+        }
+    }
+
     private NativeMap realThis(Scriptable thisObj, IdFunctionObject f)
     {
         try {
@@ -143,6 +212,7 @@ public class NativeMap
             case Id_keys:              arity=0; s="keys";              break;
             case Id_values:            arity=0; s="values";            break;
             case Id_entries:           arity=0; s="entries";           break;
+            case Id_forEach:           arity=2; s="forEach";           break;
             default: throw new IllegalArgumentException(String.valueOf(id));
         }
         initPrototypeMethod(MAP_TAG, id, s, fnName, arity);
@@ -166,7 +236,7 @@ public class NativeMap
     protected int findPrototypeId(String s)
     {
         int id;
-// #generated# Last update: 2018-03-22 00:25:16 MDT
+// #generated# Last update: 2018-03-22 02:20:25 MDT
         L0: { id = 0; String X = null; int c;
             L: switch (s.length()) {
             case 3: c=s.charAt(0);
@@ -180,7 +250,10 @@ public class NativeMap
                 if (c=='d') { X="delete";id=Id_delete; }
                 else if (c=='v') { X="values";id=Id_values; }
                 break L;
-            case 7: X="entries";id=Id_entries; break L;
+            case 7: c=s.charAt(0);
+                if (c=='e') { X="entries";id=Id_entries; }
+                else if (c=='f') { X="forEach";id=Id_forEach; }
+                break L;
             case 11: X="constructor";id=Id_constructor; break L;
             }
             if (X!=null && X!=s && !X.equals(s)) id = 0;
@@ -200,8 +273,9 @@ public class NativeMap
         Id_keys = 7,
         Id_values = 8,
         Id_entries = 9,
-        SymbolId_getSize = 10,
-        SymbolId_iterator = 11,
+        Id_forEach = 10,
+        SymbolId_getSize = 11,
+        SymbolId_iterator = 12,
         MAX_PROTOTYPE_ID = SymbolId_iterator;
 
 // #/string_id_map#

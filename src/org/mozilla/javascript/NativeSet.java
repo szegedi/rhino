@@ -113,7 +113,7 @@ public class NativeSet
     private Object js_forEach(Context cx, Scriptable scope, Object arg1, Object arg2)
     {
         if (!(arg1 instanceof Callable)) {
-            throw ScriptRuntime.typeError2("msg.isnt.function", arg1, ScriptRuntime.typeof(arg1));
+            throw ScriptRuntime.notFunctionError(arg1);
         }
         final Callable f = (Callable)arg1;
 
@@ -126,40 +126,42 @@ public class NativeSet
             }
             final Hashtable.Entry e = i.next();
             f.call(cx, scope, thisObj,
-                new Object[] { e.key, e.value, this });
+                new Object[] { e.value, e.value, this });
         }
         return Undefined.instance;
     }
 
+    /**
+     * If an "iterable" object was passed to the constructor, there are many many things
+     * to do...
+     */
     private void js_load(Context cx, Scriptable scope, Object arg1)
     {
         if ((arg1 == null) || Undefined.instance.equals(arg1)) {
             return;
         }
 
-        final Callable getIterator =
-            ScriptRuntime.getElemFunctionAndThis(arg1, SymbolKey.ITERATOR, cx, scope);
-        final Scriptable iterable = ScriptRuntime.lastStoredScriptable(cx);
-
-        // Call it, and keep going if the call returns undefined
-        Object ito = getIterator.call(cx, scope, iterable, ScriptRuntime.emptyArgs);
+        // Call the "[Symbol.iterator]" property as a function.
+        Object ito = ScriptRuntime.callIterator(arg1, cx, scope);
         if (Undefined.instance.equals(ito)) {
+            // Per spec, ignore if the iterator is undefined
             return;
         }
 
-        final Callable next =
-            ScriptRuntime.getPropFunctionAndThis(ito, "next", cx, scope);
-        final Scriptable iterator = ScriptRuntime.lastStoredScriptable(cx);
+        IteratorLikeIterable it = new IteratorLikeIterable(cx, scope, ito);
 
-        while (true) {
-            Object val = next.call(cx, scope, iterator, ScriptRuntime.emptyArgs);
-            Object doneval = ScriptRuntime.getObjectProp(val, "done", cx, scope);
-            if (Boolean.TRUE.equals(doneval)) {
-                return;
-            }
-            Object valval = ScriptRuntime.getObjectProp(val, "value", cx, scope);
-            final Object finalVal = valval == Scriptable.NOT_FOUND ? Undefined.instance : valval;
-            js_add(finalVal);
+        // Find the "add" function of our own prototype, since it might have
+        // been replaced. Since we're not fully constructed yet, create a dummy instance
+        // so that we can get our own prototype.
+        ScriptableObject dummy = ensureScriptableObject(cx.newObject(scope, getClassName()));
+        final Callable add =
+            ScriptRuntime.getPropFunctionAndThis(dummy.getPrototype(), "add", cx, scope);
+        ScriptRuntime.lastStoredScriptable(cx);
+
+        // Finally, run through all the iterated values and add them!
+        for (Object val : it) {
+            final Object finalVal = val == Scriptable.NOT_FOUND ? Undefined.instance : val;
+            add.call(cx, scope, this, new Object[] { finalVal });
         }
     }
 

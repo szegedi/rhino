@@ -2619,6 +2619,19 @@ public class ScriptRuntime {
     }
 
     /**
+     * Given an object, get the "Symbol.iterator" element, throw a TypeError if it
+     * is not present, then call the result, (throwing a TypeError if the result is
+     * not a function), and return that result, whatever it is.
+     */
+    public static Object callIterator(Object obj, Context cx, Scriptable scope)
+    {
+        final Callable getIterator =
+                ScriptRuntime.getElemFunctionAndThis(obj, SymbolKey.ITERATOR, cx, scope);
+        final Scriptable iterable = ScriptRuntime.lastStoredScriptable(cx);
+        return getIterator.call(cx, scope, iterable, ScriptRuntime.emptyArgs);
+    }
+
+    /**
      * Perform function call in reference context. Should always
      * return value that can be passed to
      * {@link #refGet(Ref, Context)} or {@link #refSet(Ref, Object, Context)}
