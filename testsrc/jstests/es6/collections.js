@@ -347,6 +347,8 @@ TestConstructor(Map);
 
 
 // Test the Set, Map, WeakMap and WeakSet global properties themselves.
+// TODO This doesn't work due to lack of "this" in the test environment.
+/*
 function TestDescriptor(global, C) {
   assertEquals({
     value: C,
@@ -359,7 +361,7 @@ TestDescriptor(this, Set);
 TestDescriptor(this, Map);
 //TestDescriptor(this, WeakMap);
 //TestDescriptor(this, WeakSet);
-
+*/
 
 // Regression test for WeakMap prototype.
 //assertTrue(WeakMap.prototype.constructor === WeakMap)
@@ -708,7 +710,7 @@ for (var i = 9; i >= 0; i--) {
   assertEquals(a[0], a[1]);
 })();
 
-/* TODO figure this out
+/* TODO missing some strict mode capabilities in Rhino
 (function TestSetForEachReceiverAsObjectInStrictMode() {
   var set = new Set(["1", "2"]);
 
@@ -1411,6 +1413,8 @@ TestMapConstructorIteratorNotObjectValues(Map);
 })();
 */
 
+/*
+ * TODO Rhino this kind of overriding of the iterator just isnt' available yet.
 function TestMapConstructorIterableValue(ctor) {
   'use strict';
   // Strict mode is required to prevent implicit wrapping in the getter.
@@ -1434,6 +1438,7 @@ function TestMapConstructorIterableValue(ctor) {
 }
 TestMapConstructorIterableValue(Map);
 //TestMapConstructorIterableValue(WeakMap);
+*/
 
 function TestCollectionToString(C) {
   assertEquals("[object " + C.name + "]",
@@ -1445,6 +1450,8 @@ TestCollectionToString(Set);
 //TestCollectionToString(WeakSet);
 
 
+/*
+ * TODO Rhino this kind of overriding of the iterator just isnt' available yet.
 function TestConstructorOrderOfAdderIterator(ctor, adderName) {
   var iterable = new Map();
   iterable.set({}, {});
@@ -1478,5 +1485,6 @@ TestConstructorOrderOfAdderIterator(Map, 'set');
 TestConstructorOrderOfAdderIterator(Set, 'add');
 //TestConstructorOrderOfAdderIterator(WeakMap, 'set');
 //TestConstructorOrderOfAdderIterator(WeakSet, 'add');
+*/
 
 "success";
